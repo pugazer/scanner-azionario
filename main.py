@@ -15,7 +15,7 @@ from datetime import datetime
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return f"Bot Operativo - Ultimo aggiornamento: {datetime.now().strftime('%H:%M:%S')}"
+    return f"Bot Operativo. Ultimo avvio scansione: {getattr(app, 'last_scan', 'Mai')}"
 
 def run_web_server():
     port = int(os.environ.get("PORT", 10000))
@@ -42,10 +42,11 @@ def carica_watchlist():
 
 def esegui_scansione():
     watchlist = carica_watchlist()
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Inizio ciclo di scansione su {len(watchlist)} titoli.")
+    app.last_scan = datetime.now().strftime('%H:%M:%S')
+    print(f"[{app.last_scan}] --- INIZIO CICLO: Analisi di {len(watchlist)} titoli ---")
     
     for ticker in watchlist:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] Analizzando: {ticker}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] In analisi: {ticker}...")
         
         for tf_name, tf_config in timeframes.items():
             try:
@@ -75,15 +76,17 @@ def esegui_scansione():
                         
                         msg = {"content": f"🚨 **ZONA ACCUMULO: {ticker}** | RSI: {ultimo_rsi:.1f} | TF: {tf_name} | Persistenza: {candele} candele. 🔗 [Grafico]({link})"}
                         requests.post(tf_config["webhook"], json=msg)
+                        print(f"   >> SEGNALE TROVATO per {ticker} su {tf_name}!")
                 
-                # Pausa breve per distribuire il carico
-                time.sleep(10) 
+                time.sleep(5) # Piccola pausa tra i timeframe
             except Exception as e:
-                print(f"Errore su {ticker} [{tf_name}]: {e}")
+                print(f"   >> Errore su {ticker} [{tf_name}]: {e}")
                 continue
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Ciclo completato. Attesa 30 minuti prima del prossimo...")
+        
+        time.sleep(15) # Pausa tra un ticker e l'altro
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] --- CICLO TERMINATO. Attesa 30 minuti ---")
 
 # --- CICLO INFINITO ---
 while True:
     esegui_scansione()
-    time.sleep(1800) # Attesa di 30 minuti prima di ricominciare l'intera lista
+    time.sleep(1800)
