@@ -21,7 +21,6 @@ def run_web_server():
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
-# Avvia il server web in un thread separato
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- WEBHOOKS ---
@@ -44,11 +43,11 @@ def carica_watchlist():
 def esegui_scansione():
     watchlist = carica_watchlist()
     app.last_scan = datetime.now().strftime('%H:%M:%S')
-    print(f"\n[{app.last_scan}] >>> INIZIO CICLO: Analisi di {len(watchlist)} titoli <<<")
+    # flush=True forza la scrittura immediata nel log
+    print(f"[{app.last_scan}] >>> INIZIO CICLO: Analisi di {len(watchlist)} titoli <<<", flush=True)
     
     for ticker in watchlist:
-        # QUESTO PRINT ti confermerà che il bot non è fermo
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] ANALIZZANDO: {ticker}")
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ANALIZZANDO: {ticker}", flush=True)
         
         for tf_name, tf_config in timeframes.items():
             try:
@@ -76,21 +75,17 @@ def esegui_scansione():
                         link = f"https://it.tradingview.com/chart/?symbol={ticker_tv}&interval={tf_config['tv_interval']}"
                         msg = {"content": f"🚨 **ZONA ACCUMULO: {ticker}** | RSI: {ultimo_rsi:.1f} | TF: {tf_name} | Candele: {candele} 🔗 [Grafico]({link})"}
                         requests.post(tf_config["webhook"], json=msg)
-                        print(f"    !!! SEGNALE TROVATO: {ticker} su {tf_name} !!!")
+                        print(f"    !!! SEGNALE TROVATO: {ticker} su {tf_name} !!!", flush=True)
                 
-                # Pausa minima tra i timeframe
                 time.sleep(2) 
             except Exception as e:
-                # Se un titolo fallisce, lo sappiamo subito dal log
-                print(f"    --- Errore su {ticker} ({tf_name}): {e}")
+                print(f"    --- Errore su {ticker} ({tf_name}): {e}", flush=True)
                 continue
         
-        # Pausa tra i titoli
         time.sleep(10) 
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] >>> CICLO COMPLETATO <<<")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] >>> CICLO COMPLETATO <<<", flush=True)
 
 # --- CICLO INFINITO ---
 while True:
     esegui_scansione()
-    # Pausa di 30 minuti tra un ciclo e l'altro
     time.sleep(1800)
