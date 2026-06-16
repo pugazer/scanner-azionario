@@ -7,7 +7,23 @@ import pandas_ta as ta
 import requests
 import time
 import logging
+import threading
+import os
+from flask import Flask
 from datetime import datetime
+
+# --- SERVER FLASK PER RENDER ---
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Il bot è online e sta scansionando!"
+
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
+threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- CONFIGURAZIONE ---
 logging.getLogger('yfinance').setLevel(logging.CRITICAL)
@@ -20,24 +36,21 @@ DIMENSIONE_BLOCCO = 200
 MINUTI_PAUSA_BLOCCO = 5
 MINUTI_PAUSA_CICLO = 60
 
-# --- WATCHLIST ---
 italia = ["A2A.MI", "AMP.MI", "AZM.MI", "BAMI.MI", "BCA.MI", "BPER.MI", "BZU.MI", "CPR.MI", "DIA.MI", "ENEL.MI", "ENI.MI", "ERG.MI", "EVO.MI", "RACE.MI", "FBK.MI", "G.MI", "HER.MI", "INW.MI", "ISP.MI", "LDO.MI", "MB.MI", "MONC.MI", "NEXI.MI", "PIRC.MI", "PST.MI", "PRY.MI", "REC.MI", "SGO.MI", "SRG.MI", "STLAM.MI", "STMMI.MI", "TEN.MI", "TRN.MI", "UCG.MI", "UNI.MI"]
 europa = ["ADS.DE", "ADYEN.AS", "AD.AS", "AI.PA", "AIR.PA", "ALV.DE", "ASML.AS", "CS.PA", "BAS.DE", "BAYN.DE", "BBVA.MC", "SAN.MC", "BMW.DE", "BNP.PA", "DTE.DE", "ENR.DE", "EL.PA", "IBE.MC", "ITX.MC", "INGA.AS", "KER.PA", "MBG.DE", "MC.PA", "MUV2.DE", "OR.PA", "PRX.AS", "RI.PA", "RMS.PA", "RWE.DE", "SAF.PA", "SAN.PA", "SAP.DE", "SU.PA", "SIE.DE", "UNA.AS", "VOW3.DE", "WKL.AS", "DHL.DE", "HEI.DE", "CON.DE"]
-usa_shares = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "ADBE", "AMD", "COST", "AVGO", "CSCO", "ACN", "ADSK", "AEE", "AEP", "AES", "AFL", "A", "APD", "AKAM", "ALK", "ALB", "ARE", "ALLE", "LNT", "ALL", "GOOG", "MO", "AMGN", "APH", "ADI", "ANSS", "AON", "APA", "APO", "AMAT", "APTV", "ACGL", "ADM", "AJG", "AIZ", "ATO", "AVB", "AVY", "AXON", "BRK-B", "BAC", "BAX", "BDX", "BKR", "BALL", "WRB", "BBY", "BIO", "BIIB", "BLK", "BX", "BA", "BK", "BXP", "BSX", "BMY", "BR", "BRO", "CARR", "CTLT", "CAT", "CBOE", "CBRE", "CCI", "CELH", "CNC", "CNP", "CF", "CHRW", "CHD", "CI", "CINF", "CTAS", "CSCO", "C", "CFG", "CLX", "CME", "CMS", "KO", "CTSH", "CL", "CMCSA", "CMA", "CAG", "COP", "ED", "STZ", "CE", "COV", "CPRT", "GLW", "CTVA", "CSGP", "CRWD", "CSX", "CMI", "CVS", "DHR", "DRI", "DVA", "DE", "DAL", "XRAY", "DVN", "DXCM", "FANG", "DLR", "DFS", "DG", "DLTR", "D", "DPZ", "DOV", "DOW", "DHI", "DTE", "DUK", "DD", "EMN", "ETN", "EBAY", "ECL", "EIX", "EW", "EA", "ELV", "EMR", "ENPH", "EOG", "EPAM", "EQT", "EFX", "EQR", "ESS", "EL", "ETR", "EVRG", "ES", "EXC", "EXPE", "EXPD", "EXR", "XOM", "FFIV", "FICO", "FAST", "FRT", "FDX", "FIS", "FITB", "FSLR", "FE", "FI", "FMC", "F", "FTNT", "FTV", "FOXA", "FOX", "BEN", "FCX", "GRMN", "IT", "GE", "GEHC", "GEV", "GEN", "GNRC", "GD", "GIS", "GM", "GPC", "GILD", "GPN", "GL", "GS", "HAL", "HIG", "HAS", "HCA", "HSY", "HES", "HPE", "HLT", "HOLX", "HD", "HON", "HRL", "HST", "HWM", "HPQ", "HUM", "HBAN", "HII", "IBM", "IEX", "IDXX", "ITW", "ILMN", "INCY", "IR", "INTC", "ICE", "IFF", "INTU", "ISRG", "IVZ", "INVH", "IQV", "IRM", "JBHT", "JKHY", "J", "SJM", "JNJ", "JCI", "JPM", "JNPR", "K", "KVUE", "KMB", "KIM", "KMI", "KLAC", "KHC", "KR", "LHX", "LH", "LRCX", "LW", "LVS", "LDOS", "LEN", "LLY", "LIN", "LYV", "LKQ", "LMT", "L", "LOW", "LULU", "LYB", "MTB", "MRO", "MPC", "MKTX", "MAR", "MMC", "MNST", "MCHP", "MDLZ", "MET", "MTD", "MGM", "MU", "MHK", "TAP", "MKC", "MCK", "MDT", "MRK", "MS", "MSI", "MSCI", "NDAQ", "NTAP", "NFLX", "NEM", "NWL", "NEE", "NKE", "NI", "NDSN", "NSC", "NTRS", "NOC", "NCLH", "NRG", "NUE", "ORLY", "O", "ODFL", "OMC", "ON", "ORCL", "OTIS", "PCAR", "PKG", "PANW", "PAYX", "PAYC", "PYPL", "PNR", "PEP", "PFE", "PCG", "PM", "PNC", "PNW", "POOL", "PPG", "PPL", "PFG", "PG", "PGR", "PLD", "PRU", "PEG", "PSA", "PHM", "QRVO", "QCOM", "PWR", "DGX", "RL", "RJF", "RTX", "REG", "REGN", "RF", "RSG", "RMD", "RHI", "ROK", "ROL", "ROP", "ROST", "RCL", "SPGI", "CRM", "SBAC", "SLB", "STX", "SEE", "SRE", "NOW", "SHW", "SPG", "SWKS", "SNA", "SO", "LUV", "SWK", "SBUX", "STT", "SYK", "SYF", "SNPS", "SYY", "TMUS", "TROW", "TTWO", "TPR", "TGT", "TEL", "TDY", "TFX", "TER", "TSCO", "TXN", "TXT", "TMO", "TJX", "T", "TT", "TDG", "TRV", "TRU", "TYL", "TSN", "USB", "UDR", "ULTA", "UNP", "UAL", "UPS", "URI", "UNH", "UHS", "VLO", "VTR", "VRSN", "VRSK", "VZ", "VRTX", "VFC", "VTRS", "VICI", "V", "VMC", "WAB", "WMT", "WBA", "DIS", "WBD", "WM", "WAT", "WEC", "WFC", "WELL", "WST", "WDC", "WY", "WHR", "WMB", "WTW", "WYNN", "XEL", "XYL", "YUM", "ZBH", "ZBRA", "ZTS", "ZION"]
+usa_shares = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "ADBE", "AMD", "COST", "AVGO", "CSCO", "ACN", "ADSK", "AEE", "AEP", "AES", "AFL", "A", "APD", "AKAM", "ALK", "ALB", "ARE", "ALLE", "LNT", "ALL", "GOOG", "MO", "AMGN", "APH", "ADI", "ANSS", "AON", "APA", "APO", "AMAT", "APTV", "ACGL", "ADM", "AJG", "AIZ", "ATO", "AVB", "AVY", "AXON", "BRK-B", "BAC", "BAX", "BDX", "BKR", "BALL", "WRB", "BBY", "BIO", "BIIB", "BLK", "BX", "BA", "BK", "BXP", "BSX", "BMY", "BR", "BRO", "CARR", "CTLT", "CAT", "CBOE", "CBRE", "CCI", "CELH", "CNC", "CNP", "CF", "CHRW", "CHD", "CI", "CINF", "CTAS", "CSCO", "C", "CFG", "CLX", "CME", "CMS", "KO", "CTSH", "CL", "CMCSA", "CMA", "CAG", "COP", "ED", "STZ", "CE", "COV", "CPRT", "GLW", "CTVA", "CSGP", "CRWD", "CSX", "CMI", "CVS", "DHR", "DRI", "DVA", "DE", "DAL", "XRAY", "DVN", "DXCM", "FANG", "DLR", "DFS", "DG", "DLTR", "D", "DPZ", "DOV", "DOW", "DHI", "DTE", "DUK", "EMN", "ETN", "EBAY", "ECL", "EIX", "EW", "EA", "ELV", "EMR", "ENPH", "EOG", "EPAM", "EQT", "EFX", "EQR", "ESS", "EL", "ETR", "EVRG", "ES", "EXC", "EXPE", "EXPD", "EXR", "XOM", "FFIV", "FICO", "FAST", "FRT", "FDX", "FIS", "FITB", "FSLR", "FE", "FI", "FMC", "F", "FTNT", "FTV", "FOXA", "FOX", "BEN", "FCX", "GRMN", "IT", "GE", "GEHC", "GEV", "GEN", "GNRC", "GD", "GIS", "GM", "GPC", "GILD", "GPN", "GL", "GS", "HAL", "HIG", "HAS", "HCA", "HSY", "HES", "HPE", "HLT", "HOLX", "HD", "HON", "HRL", "HST", "HWM", "HPQ", "HUM", "HBAN", "HII", "IBM", "IEX", "IDXX", "ITW", "ILMN", "INCY", "IR", "INTC", "ICE", "IFF", "INTU", "ISRG", "IVZ", "INVH", "IQV", "IRM", "JBHT", "JKHY", "J", "SJM", "JNJ", "JCI", "JPM", "JNPR", "K", "KVUE", "KMB", "KIM", "KMI", "KLAC", "KHC", "KR", "LHX", "LH", "LRCX", "LW", "LVS", "LDOS", "LEN", "LLY", "LIN", "LYV", "LKQ", "LMT", "L", "LOW", "LULU", "LYB", "MTB", "MRO", "MPC", "MKTX", "MAR", "MMC", "MNST", "MCHP", "MDLZ", "MET", "MTD", "MGM", "MU", "MHK", "TAP", "MKC", "MCK", "MDT", "MRK", "MS", "MSI", "MSCI", "NDAQ", "NTAP", "NFLX", "NEM", "NWL", "NEE", "NKE", "NI", "NDSN", "NSC", "NTRS", "NOC", "NCLH", "NRG", "NUE", "ORLY", "O", "ODFL", "OMC", "ON", "ORCL", "OTIS", "PCAR", "PKG", "PANW", "PAYX", "PAYC", "PYPL", "PNR", "PEP", "PFE", "PCG", "PM", "PNC", "PNW", "POOL", "PPG", "PPL", "PFG", "PG", "PGR", "PLD", "PRU", "PEG", "PSA", "PHM", "QRVO", "QCOM", "PWR", "DGX", "RL", "RJF", "RTX", "REG", "REGN", "RF", "RSG", "RMD", "RHI", "ROK", "ROL", "ROP", "ROST", "RCL", "SPGI", "CRM", "SBAC", "SLB", "STX", "SEE", "SRE", "NOW", "SHW", "SPG", "SWKS", "SNA", "SO", "LUV", "SWK", "SBUX", "STT", "SYK", "SYF", "SNPS", "SYY", "TMUS", "TROW", "TTWO", "TPR", "TGT", "TEL", "TDY", "TFX", "TER", "TSCO", "TXN", "TXT", "TMO", "TJX", "T", "TT", "TDG", "TRV", "TRU", "TYL", "TSN", "USB", "UDR", "ULTA", "UNP", "UAL", "UPS", "URI", "UNH", "UHS", "VLO", "VTR", "VRSN", "VRSK", "VZ", "VRTX", "VFC", "VTRS", "VICI", "V", "VMC", "WAB", "WMT", "WBA", "DIS", "WBD", "WM", "WAT", "WEC", "WFC", "WELL", "WST", "WDC", "WY", "WHR", "WMB", "WTW", "WYNN", "XEL", "XYL", "YUM", "ZBH", "ZBRA", "ZTS", "ZION"]
 
 watchlist = list(set(italia + europa + usa_shares))
 timeframes = {
-    "4h":     {"interval": "4h",  "period": "730d", "webhook": WEBHOOK_4H,     "tv_interval": "240"},
+    "4h":     {"interval": "4h",  "period": "730d", "webhook": WEBHOOK_4H,   "tv_interval": "240"},
     "Daily":  {"interval": "1d",  "period": "5y",    "webhook": WEBHOOK_DAILY,  "tv_interval": "D"},
     "Weekly": {"interval": "1wk", "period": "10y",   "webhook": WEBHOOK_WEEKLY, "tv_interval": "W"}
 }
 
-# --- FUNZIONE SUDDIVISIONE ---
 def dividi_in_blocchi(lista, n):
     for i in range(0, len(lista), n):
         yield lista[i:i + n]
 
-# --- MOTORE PRINCIPALE ---
 ciclo = 1
 while True:
     print(f"\n🚀 CICLO #{ciclo} AVVIATO: {datetime.now().strftime('%H:%M:%S')}")
