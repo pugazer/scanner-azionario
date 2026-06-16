@@ -23,6 +23,7 @@ def run_web_server():
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
+# Avvio il server come primo processo
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- CONFIGURAZIONE ---
@@ -42,8 +43,8 @@ usa_shares = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "ADBE", "
 
 watchlist = list(set(italia + europa + usa_shares))
 timeframes = {
-    "4h":     {"interval": "4h",  "period": "730d", "webhook": WEBHOOK_4H,   "tv_interval": "240"},
-    "Daily":  {"interval": "1d",  "period": "5y",    "webhook": WEBHOOK_DAILY,  "tv_interval": "D"},
+    "4h":    {"interval": "4h",  "period": "730d", "webhook": WEBHOOK_4H,   "tv_interval": "240"},
+    "Daily": {"interval": "1d",  "period": "5y",   "webhook": WEBHOOK_DAILY,  "tv_interval": "D"},
     "Weekly": {"interval": "1wk", "period": "10y",   "webhook": WEBHOOK_WEEKLY, "tv_interval": "W"}
 }
 
@@ -61,7 +62,8 @@ while True:
         for tf_name, tf_config in timeframes.items():
             for ticker in blocco_corrente:
                 try:
-                    df = yf.download(ticker, period=tf_config["period"], interval=tf_config["interval"], progress=False)
+                    # AGGIUNTA PROTEZIONE: timeout=10
+                    df = yf.download(ticker, period=tf_config["period"], interval=tf_config["interval"], progress=False, timeout=10)
                     if df.empty or len(df) < 130: continue
                     if isinstance(df.columns, pd.MultiIndex): df.columns = [col[0] for col in df.columns]
                     
@@ -97,7 +99,8 @@ while True:
                             }
                             requests.post(tf_config["webhook"], json=msg)
                             time.sleep(0.5)
-                    time.sleep(0.15)
+                    # PROTEZIONE: Pausa costante tra ticker
+                    time.sleep(0.5) 
                 except: continue
         
         if num_blocco < tot_blocchi:
