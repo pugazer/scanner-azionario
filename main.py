@@ -15,12 +15,13 @@ from datetime import datetime
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return f"Bot Operativo. Ultimo avvio scansione: {getattr(app, 'last_scan', 'Mai')}"
+    return f"Bot Operativo. Ultima scansione: {getattr(app, 'last_scan', 'Mai')}"
 
 def run_web_server():
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
+# Avvia il server web in un thread separato
 threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- WEBHOOKS ---
@@ -28,7 +29,6 @@ WEBHOOK_4H      = "https://discord.com/api/webhooks/1515991717201838164/olqUv9cA
 WEBHOOK_DAILY   = "https://discord.com/api/webhooks/1515997229385777213/n6W-mew2MNDjOdhT6ASMx_KUOO5QgY463AoS2VI_9TgE2cXlLd7jPu0psgWuhQOEn7Pp"
 WEBHOOK_WEEKLY  = "https://discord.com/api/webhooks/1515997383606009936/KyJhKIRSHDlfDrH706mx5gZ5jxomU2-DhdxC6ZNae4C9HB3_cY50pVhstjzv2sMai-H5"
 
-# --- PERIODI OTTIMIZZATI ---
 timeframes = {
     "4h":     {"interval": "4h",  "period": "100d",  "webhook": WEBHOOK_4H,   "tv_interval": "240"},
     "Daily":  {"interval": "1d",  "period": "300d",  "webhook": WEBHOOK_DAILY,  "tv_interval": "D"},
@@ -44,10 +44,11 @@ def carica_watchlist():
 def esegui_scansione():
     watchlist = carica_watchlist()
     app.last_scan = datetime.now().strftime('%H:%M:%S')
-    print(f"[{app.last_scan}] --- INIZIO CICLO: Analisi di {len(watchlist)} titoli ---")
+    print(f"\n[{app.last_scan}] >>> INIZIO CICLO: Analisi di {len(watchlist)} titoli <<<")
     
     for ticker in watchlist:
-        print(f"[{datetime.now().strftime('%H:%M:%S')}] In analisi: {ticker}...")
+        # QUESTO PRINT ti confermerà che il bot non è fermo
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ANALIZZANDO: {ticker}")
         
         for tf_name, tf_config in timeframes.items():
             try:
@@ -71,23 +72,25 @@ def esegui_scansione():
                         else: break
                     
                     if candele >= 15:
-                        valuta = "€" if any(ext in ticker for ext in [".MI", ".PA", ".DE", ".AS", ".MC", ".L", ".SW", ".CO"]) else "$"
                         ticker_tv = ticker.split('.')[0]
                         link = f"https://it.tradingview.com/chart/?symbol={ticker_tv}&interval={tf_config['tv_interval']}"
-                        
-                        msg = {"content": f"🚨 **ZONA ACCUMULO: {ticker}** | RSI: {ultimo_rsi:.1f} | TF: {tf_name} | Persistenza: {candele} candele. 🔗 [Grafico]({link})"}
+                        msg = {"content": f"🚨 **ZONA ACCUMULO: {ticker}** | RSI: {ultimo_rsi:.1f} | TF: {tf_name} | Candele: {candele} 🔗 [Grafico]({link})"}
                         requests.post(tf_config["webhook"], json=msg)
-                        print(f"   >> SEGNALE TROVATO per {ticker} su {tf_name}!")
+                        print(f"    !!! SEGNALE TROVATO: {ticker} su {tf_name} !!!")
                 
-                time.sleep(5) 
+                # Pausa minima tra i timeframe
+                time.sleep(2) 
             except Exception as e:
-                print(f"   >> Errore su {ticker} [{tf_name}]: {e}")
+                # Se un titolo fallisce, lo sappiamo subito dal log
+                print(f"    --- Errore su {ticker} ({tf_name}): {e}")
                 continue
         
-        time.sleep(15) 
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] --- CICLO TERMINATO. Attesa 30 minuti ---")
+        # Pausa tra i titoli
+        time.sleep(10) 
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] >>> CICLO COMPLETATO <<<")
 
 # --- CICLO INFINITO ---
 while True:
     esegui_scansione()
+    # Pausa di 30 minuti tra un ciclo e l'altro
     time.sleep(1800)
