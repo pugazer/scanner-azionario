@@ -15,7 +15,7 @@ from datetime import datetime
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return f"Bot attivo. Orario attuale: {datetime.now().strftime('%H:%M:%S')}"
+    return f"Bot Operativo - Ultimo aggiornamento: {datetime.now().strftime('%H:%M:%S')}"
 
 def run_web_server():
     port = int(os.environ.get("PORT", 10000))
@@ -42,14 +42,9 @@ def carica_watchlist():
 
 def esegui_scansione():
     watchlist = carica_watchlist()
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Inizio scansione di {len(watchlist)} titoli.")
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Inizio ciclo di scansione su {len(watchlist)} titoli.")
     
     for ticker in watchlist:
-        # Controllo orario operativo
-        if datetime.now().hour >= 12: 
-            print("Orario limite (12:00) raggiunto.")
-            break
-            
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Analizzando: {ticker}")
         
         for tf_name, tf_config in timeframes.items():
@@ -81,15 +76,14 @@ def esegui_scansione():
                         msg = {"content": f"🚨 **ZONA ACCUMULO: {ticker}** | RSI: {ultimo_rsi:.1f} | TF: {tf_name} | Persistenza: {candele} candele. 🔗 [Grafico]({link})"}
                         requests.post(tf_config["webhook"], json=msg)
                 
-                time.sleep(18) # Calibrato per finire 240 titoli * 3 TF in ~4 ore
+                # Pausa breve per distribuire il carico
+                time.sleep(10) 
             except Exception as e:
-                print(f"Errore su {ticker}: {e}")
+                print(f"Errore su {ticker} [{tf_name}]: {e}")
                 continue
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Ciclo completato. Attesa 30 minuti prima del prossimo...")
 
-# --- CICLO GIORNALIERO ---
+# --- CICLO INFINITO ---
 while True:
-    ora_attuale = datetime.now().hour
-    if ora_attuale == 8: 
-        esegui_scansione()
-    
-    time.sleep(300) # Dorme 5 minuti tra un controllo e l'altro
+    esegui_scansione()
+    time.sleep(1800) # Attesa di 30 minuti prima di ricominciare l'intera lista
