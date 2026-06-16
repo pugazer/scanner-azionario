@@ -8,6 +8,7 @@ import requests
 import time
 import threading
 import os
+import random  # <--- AGGIUNTO per gestire le pause dinamiche
 from flask import Flask
 from datetime import datetime
 
@@ -16,13 +17,6 @@ app = Flask(__name__)
 @app.route('/')
 def home():
     return f"Bot Operativo. Ultima scansione: {getattr(app, 'last_scan', 'Mai')}"
-
-def run_web_server():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
-# Avvia il server web in un thread separato per Render
-threading.Thread(target=run_web_server, daemon=True).start()
 
 # --- WEBHOOKS ---
 WEBHOOK_4H      = "https://discord.com/api/webhooks/1515991717201838164/olqUv9cAjdlaOOEnO46tilUel16UuzMmLzD6VtDlTmqXFi7Nb4dZbirdejLXke1VKnE9"
@@ -92,17 +86,28 @@ def esegui_scansione():
                         requests.post(tf_config["webhook"], json=msg)
                         print(f"    !!! SEGNALE TROVATO: {ticker} su {tf_name} !!!", flush=True)
                 
-                time.sleep(1) # Micro-pausa tra i timeframe dello stesso titolo
+                # ⚡ MODIFICATO: Micro-pausa randomizzata tra i timeframe dello stesso titolo
+                time.sleep(random.uniform(0.2, 0.4))
             except Exception as e:
                 print(f"    --- Errore su {ticker} ({tf_name}): {e}", flush=True)
                 continue
         
-        time.sleep(4) # Pausa bilanciata tra i vari ticker (Log dinamico assicurato)
+        # ⚡ MODIFICATO: Pausa dinamica e velocizzata tra i vari ticker (Mantiene al sicuro l'IP da Yahoo)
+        time.sleep(random.uniform(1.0, 1.8))
         
     print(f"[{datetime.now().strftime('%H:%M:%S')}] >>> CICLO COMPLETATO SU TUTTA LA LISTA <<<", flush=True)
 
-# --- LOOP INFINITO DI ESECUZIONE ---
-while True:
-    esegui_scansione()
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] In attesa 30 minuti prima della prossima scansione...", flush=True)
-    time.sleep(1800)
+# --- LOOP INFINITO DI ESECUZIONE IN BACKGROUND ---
+def loop_scansione_background():
+    while True:
+        esegui_scansione()
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] In attesa 30 minuti prima della prossima scansione...", flush=True)
+        time.sleep(1800)
+
+# Avvia lo scanner nel thread in background per lasciare libero Flask
+threading.Thread(target=loop_scansione_background, daemon=True).start()
+
+# --- ACCENSIONE SERVER SUL THREAD PRINCIPALE (Ottimizzato per Render & UptimeRobot) ---
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
