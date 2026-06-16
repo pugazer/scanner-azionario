@@ -4,10 +4,10 @@ import pandas_ta as ta
 import requests
 import time
 import os
-from flask import Flask
 import threading
+from flask import Flask
 
-# --- SERVER FLASK PER RENDER (Mantiene il bot vivo) ---
+# --- SERVER FLASK PER RENDER ---
 app = Flask(__name__)
 @app.route('/')
 def home():
@@ -33,17 +33,22 @@ timeframes = {
 def analizza_ticker(ticker, tf_name, tf_config, webhook):
     try:
         df = yf.download(ticker, period=tf_config["period"], interval=tf_config["interval"], progress=False, timeout=15)
-        if df.empty or len(df) < 100: return
+        
+        # Filtro dati minimi
+        if df.empty or len(df) < 100: 
+            return
+            
         if isinstance(df.columns, pd.MultiIndex): df.columns = [col[0] for col in df.columns]
         
         df['RSI_60'] = ta.rsi(df['Close'], length=60)
         df['EMA_RSI_60'] = ta.ema(df['RSI_60'], length=60)
         df = df.dropna()
         
+        if df.empty: return
+        
         ultimo_rsi = float(df['RSI_60'].iloc[-1])
         ultima_ema = float(df['EMA_RSI_60'].iloc[-1])
         
-        # LOGICA ORIGINALE: RSI sotto EMA e sotto 40
         if ultimo_rsi < ultima_ema and ultimo_rsi < 40:
             df['Sotto_Media'] = df['RSI_60'] < df['EMA_RSI_60']
             candele = 0
@@ -51,7 +56,6 @@ def analizza_ticker(ticker, tf_name, tf_config, webhook):
                 if df['Sotto_Media'].iloc[i]: candele += 1
                 else: break
             
-            # FILTRO PERSISTENZA 15 CANDELE
             if candele >= 15:
                 ticker_tv = ticker.split('.')[0]
                 link = f"https://it.tradingview.com/chart/?symbol={ticker_tv}&interval={tf_config['tv_interval']}"
@@ -59,13 +63,12 @@ def analizza_ticker(ticker, tf_name, tf_config, webhook):
                     "content": f"🚨 **ZONA ACCUMULO (RSI < 40)** 🚨\n📌 **Azione:** `{ticker}`\n⏱️ **TF:** `{tf_name}`\n📉 **RSI:** `{ultimo_rsi:.1f}`\n⏳ **Persistenza:** `{candele}` candele sotto media.\n🔗 [Apri Grafico]({link})"
                 }
                 requests.post(webhook, json=msg)
-                time.sleep(0.5)
+                time.sleep(1) 
     except Exception as e:
         print(f"Errore su {ticker}: {e}")
 
 # --- CICLO PRINCIPALE ---
 while True:
-    # Determina il file in base all'ora (da 1 a 10)
     ora_corrente = int(time.time() / 3600) % 10 + 1
     nome_file = f"list{ora_corrente}.txt"
     
@@ -73,13 +76,15 @@ while True:
         with open(nome_file, "r") as f:
             tickers = [line.strip() for line in f if line.strip()]
         
-        print(f"[{time.strftime('%H:%M:%S')}] Scansione di {len(tickers)} titoli da {nome_file}")
+        print(f"[{time.strftime('%H:%M:%S')}] Inizio scansione {nome_file} ({len(tickers)} titoli)")
         
         for ticker in tickers:
+            print(f"-> Analisi: {ticker}")
             for tf_name, tf_config in timeframes.items():
                 analizza_ticker(ticker, tf_name, tf_config, tf_config["webhook"])
-            time.sleep(0.2) # Breve pausa tra i ticker
+            time.sleep(0.5) 
+            
     else:
-        print(f"File {nome_file} non trovato, attendo...")
+        print(f"File {nome_file} non trovato.")
     
-    time.sleep(60) # Pausa tra un ciclo di scansione e l'altro
+    time.sleep(60)
