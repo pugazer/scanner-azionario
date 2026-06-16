@@ -32,10 +32,10 @@ timeframes = {
 
 def analizza_ticker(ticker, tf_name, tf_config, webhook):
     try:
-        df = yf.download(ticker, period=tf_config["period"], interval=tf_config["interval"], progress=False, timeout=15)
+        df = yf.download(ticker, period=tf_config["period"], interval=tf_config["interval"], progress=False, timeout=20)
         
-        # Filtro dati minimi
-        if df.empty or len(df) < 100: 
+        # Filtro dati minimi abbassato a 50 per includere più titoli
+        if df.empty or len(df) < 50: 
             return
             
         if isinstance(df.columns, pd.MultiIndex): df.columns = [col[0] for col in df.columns]
