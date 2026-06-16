@@ -15,7 +15,7 @@ from datetime import datetime
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return "Bot Operativo - Scansione 08:00-12:00"
+    return f"Bot attivo. Orario attuale: {datetime.now().strftime('%H:%M:%S')}"
 
 def run_web_server():
     port = int(os.environ.get("PORT", 10000))
@@ -23,7 +23,7 @@ def run_web_server():
 
 threading.Thread(target=run_web_server, daemon=True).start()
 
-# --- WEBHOOKS E CONFIGURAZIONI ---
+# --- WEBHOOKS ---
 WEBHOOK_4H      = "https://discord.com/api/webhooks/1515991717201838164/olqUv9cAjdlaOOEnO46tilUel16UuzMmLzD6VtDlTmqXFi7Nb4dZbirdejLXke1VKnE9"
 WEBHOOK_DAILY   = "https://discord.com/api/webhooks/1515997229385777213/n6W-mew2MNDjOdhT6ASMx_KUOO5QgY463AoS2VI_9TgE2cXlLd7jPu0psgWuhQOEn7Pp"
 WEBHOOK_WEEKLY  = "https://discord.com/api/webhooks/1515997383606009936/KyJhKIRSHDlfDrH706mx5gZ5jxomU2-DhdxC6ZNae4C9HB3_cY50pVhstjzv2sMai-H5"
@@ -42,13 +42,20 @@ def carica_watchlist():
 
 def esegui_scansione():
     watchlist = carica_watchlist()
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] Inizio scansione di {len(watchlist)} titoli.")
+    
     for ticker in watchlist:
-        # Se sono passate le 12, chiudiamo tutto
-        if datetime.now().hour >= 12: break
+        # Controllo orario operativo
+        if datetime.now().hour >= 12: 
+            print("Orario limite (12:00) raggiunto.")
+            break
+            
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Analizzando: {ticker}")
         
         for tf_name, tf_config in timeframes.items():
             try:
-                df = yf.download(ticker, period=tf_config["period"], interval=tf_config["interval"], progress=False)
+                df = yf.download(ticker, period=tf_config["period"], interval=tf_config["interval"], progress=False, timeout=10)
+                
                 if df.empty or len(df) < 130: continue
                 if isinstance(df.columns, pd.MultiIndex): df.columns = [col[0] for col in df.columns]
                 
@@ -74,15 +81,15 @@ def esegui_scansione():
                         msg = {"content": f"🚨 **ZONA ACCUMULO: {ticker}** | RSI: {ultimo_rsi:.1f} | TF: {tf_name} | Persistenza: {candele} candele. 🔗 [Grafico]({link})"}
                         requests.post(tf_config["webhook"], json=msg)
                 
-                # Pausa ridotta a 20 secondi per completare la lista entro le 4 ore
-                time.sleep(20) 
-            except: continue
+                time.sleep(18) # Calibrato per finire 240 titoli * 3 TF in ~4 ore
+            except Exception as e:
+                print(f"Errore su {ticker}: {e}")
+                continue
 
 # --- CICLO GIORNALIERO ---
 while True:
     ora_attuale = datetime.now().hour
-    # Parte alle 8:00 e si ferma dopo le 12:00
     if ora_attuale == 8: 
         esegui_scansione()
     
-    time.sleep(300)
+    time.sleep(300) # Dorme 5 minuti tra un controllo e l'altro
