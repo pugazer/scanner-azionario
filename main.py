@@ -28,10 +28,11 @@ WEBHOOK_4H      = "https://discord.com/api/webhooks/1515991717201838164/olqUv9cA
 WEBHOOK_DAILY   = "https://discord.com/api/webhooks/1515997229385777213/n6W-mew2MNDjOdhT6ASMx_KUOO5QgY463AoS2VI_9TgE2cXlLd7jPu0psgWuhQOEn7Pp"
 WEBHOOK_WEEKLY  = "https://discord.com/api/webhooks/1515997383606009936/KyJhKIRSHDlfDrH706mx5gZ5jxomU2-DhdxC6ZNae4C9HB3_cY50pVhstjzv2sMai-H5"
 
+# --- PERIODI OTTIMIZZATI ---
 timeframes = {
-    "4h":     {"interval": "4h",  "period": "730d", "webhook": WEBHOOK_4H,   "tv_interval": "240"},
-    "Daily":  {"interval": "1d",  "period": "5y",    "webhook": WEBHOOK_DAILY,  "tv_interval": "D"},
-    "Weekly": {"interval": "1wk", "period": "10y",   "webhook": WEBHOOK_WEEKLY, "tv_interval": "W"}
+    "4h":     {"interval": "4h",  "period": "100d",  "webhook": WEBHOOK_4H,   "tv_interval": "240"},
+    "Daily":  {"interval": "1d",  "period": "300d",  "webhook": WEBHOOK_DAILY,  "tv_interval": "D"},
+    "Weekly": {"interval": "1wk", "period": "150wk", "webhook": WEBHOOK_WEEKLY, "tv_interval": "W"}
 }
 
 def carica_watchlist():
@@ -78,12 +79,12 @@ def esegui_scansione():
                         requests.post(tf_config["webhook"], json=msg)
                         print(f"   >> SEGNALE TROVATO per {ticker} su {tf_name}!")
                 
-                time.sleep(5) # Piccola pausa tra i timeframe
+                time.sleep(5) 
             except Exception as e:
                 print(f"   >> Errore su {ticker} [{tf_name}]: {e}")
                 continue
         
-        time.sleep(15) # Pausa tra un ticker e l'altro
+        time.sleep(15) 
     print(f"[{datetime.now().strftime('%H:%M:%S')}] --- CICLO TERMINATO. Attesa 30 minuti ---")
 
 # --- CICLO INFINITO ---
