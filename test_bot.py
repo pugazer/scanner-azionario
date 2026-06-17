@@ -8,7 +8,6 @@ import requests
 import time
 import threading
 import os
-import random
 import base64
 from flask import Flask
 from datetime import datetime
@@ -128,6 +127,9 @@ def esegui_scansione_test():
     print(f"\n[{app.last_scan}] >>> 🧪 SCANNING {len(watchlist)} TITOLI <<<", flush=True)
     
     for ticker in watchlist:
+        # Re-inserimento del log di scansione
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] 🧪 TEST ANALISI: {ticker}", flush=True)
+        
         for tf_name, tf_config in timeframes.items():
             try:
                 df = yf.download(ticker, period=tf_config["period"], interval=tf_config["interval"], progress=False, timeout=10)
