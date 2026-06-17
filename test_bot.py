@@ -44,10 +44,8 @@ def carica_watchlist():
         with open("list1.txt", "r") as f:
             raw_list = [line.strip() for line in f if line.strip()]
         
-        # Elimina duplicati e ordina alfabeticamente
         lista_pulita = sorted(list(set(raw_list)))
         
-        # Se il file non era in ordine, lo corregge
         if lista_pulita != raw_list:
             with open("list1.txt", "w") as f:
                 f.write("\n".join(lista_pulita) + "\n")
@@ -99,7 +97,6 @@ def sposta_ticker_automatico(ticker, direzione):
         msg_c1, msg_c2 = f"Bot: Rimosso {ticker} da Incubatore (Risvegliato)", f"Bot: Ripristinato {ticker} in Watchlist"
     else: return
 
-    # Sort & Unique finale prima del salvataggio
     watchlist = sorted(list(set(watchlist)))
     incubatore = sorted(list(set(incubatore)))
 
@@ -124,45 +121,50 @@ def controlla_ticker_delistato(ticker):
 def esegui_scansione_test():
     watchlist = carica_watchlist()
     app.last_scan = datetime.now().strftime('%H:%M:%S')
-    print(f"\n[{app.last_scan}] >>> 🧪 SCANNING {len(watchlist)} TITOLI <<<", flush=True)
+    print(f"\n[{app.last_scan}] >>> 🧪 INIZIO SCAN {len(watchlist)} TITOLI <<<", flush=True)
     
     for ticker in watchlist:
-        # Re-inserimento del log di scansione
         print(f"[{datetime.now().strftime('%H:%M:%S')}] 🧪 TEST ANALISI: {ticker}", flush=True)
-        
-        for tf_name, tf_config in timeframes.items():
-            try:
-                df = yf.download(ticker, period=tf_config["period"], interval=tf_config["interval"], progress=False, timeout=10)
-                if df.empty or len(df) < 130: 
-                    if tf_name == "Daily":
-                        if controlla_ticker_delistato(ticker):
-                            sposta_ticker_automatico(ticker, "da_watchlist_a_incubatore")
-                            requests.post(WEBHOOK_DAILY_TEST, json={"content": f"🤖 **[AUTO-SPOSTAMENTO]** Ticker **{ticker}** inattivo. Spostato in incubatore."})
-                            break 
-                    continue 
+        try:
+            for tf_name, tf_config in timeframes.items():
+                try:
+                    df = yf.download(ticker, period=tf_config["period"], interval=tf_config["interval"], progress=False, timeout=10)
+                    if df.empty or len(df) < 130: 
+                        if tf_name == "Daily":
+                            if controlla_ticker_delistato(ticker):
+                                sposta_ticker_automatico(ticker, "da_watchlist_a_incubatore")
+                                requests.post(WEBHOOK_DAILY_TEST, json={"content": f"🤖 **[AUTO-SPOSTAMENTO]** Ticker **{ticker}** inattivo. Spostato in incubatore."})
+                                break 
+                        continue 
+                        
+                    if isinstance(df.columns, pd.MultiIndex): df.columns = [col[0] for col in df.columns]
+                    df['RSI_60'] = ta.rsi(df['Close'], length=60)
+                    df['EMA_RSI_60'] = ta.ema(df['RSI_60'], length=60)
+                    df = df.dropna()
+                    if df.empty: continue
                     
-                if isinstance(df.columns, pd.MultiIndex): df.columns = [col[0] for col in df.columns]
-                df['RSI_60'] = ta.rsi(df['Close'], length=60)
-                df['EMA_RSI_60'] = ta.ema(df['RSI_60'], length=60)
-                df = df.dropna()
-                if df.empty: continue
-                
-                if df['RSI_60'].iloc[-1] < df['EMA_RSI_60'].iloc[-1] and df['RSI_60'].iloc[-1] < 40:
-                    df['Sotto_Media'] = df['RSI_60'] < df['EMA_RSI_60']
-                    candele = 0
-                    for i in range(len(df)-1, -1, -1):
-                        if df['Sotto_Media'].iloc[i]: candele += 1
-                        else: break
-                    
-                    if candele >= 15 and (candele - 15) % tf_config["reminder_step"] == 0:
-                        chiave = (ticker, tf_name)
-                        if gia_inviati.get(chiave) != df.index[-1]:
-                            msg = {"content": f"{'🎯 **[TEST] NUOVO ACCUMULO**' if candele == 15 else '🔄 **[TEST] PROMEMORIA ACCUMULO**'}: **{ticker}** | RSI: {df['RSI_60'].iloc[-1]:.1f} | TF: {tf_name} | Candele: {candele} 🔗 [Grafico](https://it.tradingview.com/chart/?symbol={ticker.split('.')[0]}&interval={tf_config['tv_interval']})"}
-                            requests.post(tf_config["webhook"], json=msg)
-                            gia_inviati[chiave] = df.index[-1]
-                time.sleep(0.2)
-            except: continue
-        time.sleep(1.0)
+                    if df['RSI_60'].iloc[-1] < df['EMA_RSI_60'].iloc[-1] and df['RSI_60'].iloc[-1] < 40:
+                        df['Sotto_Media'] = df['RSI_60'] < df['EMA_RSI_60']
+                        candele = 0
+                        for i in range(len(df)-1, -1, -1):
+                            if df['Sotto_Media'].iloc[i]: candele += 1
+                            else: break
+                        
+                        if candele >= 15 and (candele - 15) % tf_config["reminder_step"] == 0:
+                            chiave = (ticker, tf_name)
+                            if gia_inviati.get(chiave) != df.index[-1]:
+                                msg = {"content": f"{'🎯 **[TEST] NUOVO ACCUMULO**' if candele == 15 else '🔄 **[TEST] PROMEMORIA ACCUMULO**'}: **{ticker}** | RSI: {df['RSI_60'].iloc[-1]:.1f} | TF: {tf_name} | Candele: {candele} 🔗 [Grafico](https://it.tradingview.com/chart/?symbol={ticker.split('.')[0]}&interval={tf_config['tv_interval']})"}
+                                requests.post(tf_config["webhook"], json=msg)
+                                gia_inviati[chiave] = df.index[-1]
+                    time.sleep(0.2)
+                except Exception as e:
+                    print(f"⚠️ Errore su {ticker} ({tf_name}): {e}", flush=True)
+                    continue
+        except Exception as e:
+            print(f"‼️ ERRORE CRITICO NEL CICLO PRINCIPALE su {ticker}: {e}", flush=True)
+            continue
+            
+    print(f"✅ >>> SCAN TERMINATA CORRETTAMENTE <<<", flush=True)
 
 def esegui_scansione_incubatore():
     incubatore = carica_incubatore()
