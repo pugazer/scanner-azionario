@@ -25,7 +25,7 @@ WEBHOOK_WEEKLY_TEST  = "https://discord.com/api/webhooks/1516694640474980485/81J
 
 # --- TIMEFRAMES ---
 timeframes = {
-    "4h":     {"interval": "240", "period": "2y", "webhook": WEBHOOK_4H_TEST,     "tv_interval": "240", "reminder_step": 6},
+    "4h":     {"interval": "4h",  "period": "2y", "webhook": WEBHOOK_4H_TEST,     "tv_interval": "240", "reminder_step": 6},
     "Daily":  {"interval": "1d",  "period": "2y", "webhook": WEBHOOK_DAILY_TEST,  "tv_interval": "D",   "reminder_step": 5},
     "Weekly": {"interval": "1wk", "period": "5y", "webhook": WEBHOOK_WEEKLY_TEST, "tv_interval": "W",   "reminder_step": 4}
 }
@@ -76,7 +76,7 @@ def scrivi_file_su_github(path_file, linee, messaggio_commit):
     if r.status_code == 200: sha = r.json().get("sha", "")
         
     testo_base64 = base64.b64encode(("\n".join(linee) + "\n").encode('utf-8')).decode('utf-8')
-    payload = {"message": messaggio_commit, "content": testo_base64}
+    payload = {"message": mensaje_commit, "content": testo_base64}
     if sha: payload["sha"] = sha
         
     r_put = requests.put(url, headers=headers, json=payload)
@@ -157,8 +157,8 @@ def esegui_scansione_test():
                                 requests.post(tf_config["webhook"], json=msg)
                                 gia_inviati[chiave] = df.index[-1]
                     
-                    # Pausa prudenziale tra le richieste a Yahoo Finance per evitare i blocchi IP
-                    time.sleep(0.7)
+                    # Pausa di 1 secondo tra le richieste per evitare i ban IP su liste grandi
+                    time.sleep(1.0)
                 except Exception as e:
                     print(f"⚠️ Errore su {ticker} ({tf_name}): {e}", flush=True)
                     continue
@@ -178,7 +178,7 @@ def esegui_scansione_incubatore():
                 if (datetime.now().date() - ultima).days <= 30:
                     sposta_ticker_automatico(ticker, "da_incubatore_a_watchlist")
                     requests.post(WEBHOOK_DAILY_TEST, json={"content": f"🎉 **[AUTOMAZIONE] Ticker {ticker} RISVEGLIATO!** Reinserito in list1.txt."})
-            time.sleep(0.7)
+            time.sleep(1.0)
         except: continue
 
 def loop_scansione_background():
