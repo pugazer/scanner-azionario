@@ -25,7 +25,7 @@ WEBHOOK_WEEKLY_TEST  = "https://discord.com/api/webhooks/1516694640474980485/81J
 
 # --- TIMEFRAMES ---
 timeframes = {
-    "4h":     {"interval": "4h",  "period": "2y", "webhook": WEBHOOK_4H_TEST,     "tv_interval": "240", "reminder_step": 6},
+    "4h":     {"interval": "240", "period": "2y", "webhook": WEBHOOK_4H_TEST,     "tv_interval": "240", "reminder_step": 6},
     "Daily":  {"interval": "1d",  "period": "2y", "webhook": WEBHOOK_DAILY_TEST,  "tv_interval": "D",   "reminder_step": 5},
     "Weekly": {"interval": "1wk", "period": "5y", "webhook": WEBHOOK_WEEKLY_TEST, "tv_interval": "W",   "reminder_step": 4}
 }
@@ -156,7 +156,9 @@ def esegui_scansione_test():
                                 msg = {"content": f"{'🎯 **[TEST] NUOVO ACCUMULO**' if candele == 15 else '🔄 **[TEST] PROMEMORIA ACCUMULO**'}: **{ticker}** | RSI: {df['RSI_60'].iloc[-1]:.1f} | TF: {tf_name} | Candele: {candele} 🔗 [Grafico](https://it.tradingview.com/chart/?symbol={ticker.split('.')[0]}&interval={tf_config['tv_interval']})"}
                                 requests.post(tf_config["webhook"], json=msg)
                                 gia_inviati[chiave] = df.index[-1]
-                    time.sleep(0.2)
+                    
+                    # Pausa prudenziale tra le richieste a Yahoo Finance per evitare i blocchi IP
+                    time.sleep(0.7)
                 except Exception as e:
                     print(f"⚠️ Errore su {ticker} ({tf_name}): {e}", flush=True)
                     continue
@@ -176,7 +178,7 @@ def esegui_scansione_incubatore():
                 if (datetime.now().date() - ultima).days <= 30:
                     sposta_ticker_automatico(ticker, "da_incubatore_a_watchlist")
                     requests.post(WEBHOOK_DAILY_TEST, json={"content": f"🎉 **[AUTOMAZIONE] Ticker {ticker} RISVEGLIATO!** Reinserito in list1.txt."})
-            time.sleep(0.5)
+            time.sleep(0.7)
         except: continue
 
 def loop_scansione_background():
