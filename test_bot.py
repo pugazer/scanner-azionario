@@ -168,7 +168,7 @@ def esegui_scansione_test():
                             sposta_ticker_automatico(ticker, "da_watchlist_a_incubatore")
                             
                             msg = {
-                                "content": f"⚙️ **[AUTOMAZIONE] TITOLO SPOSTATO IN INCONBATORIO:**\n"
+                                "content": f"⚙️ **[AUTOMAZIONE] TITOLO SPOSTATO IN INCUBATORIO:**\n"
                                            f"Il ticker **{ticker}** è inattivo o delistato. È stato tolto automaticamente da `list1.txt` "
                                            f"e parcheggiato in `incubatore.txt` sia su Render che su GitHub. Tu non devi fare nulla! 🤖"
                             }
