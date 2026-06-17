@@ -1,0 +1,34 @@
+name: Auto-Sospensione Render Bot (4 Ore)
+
+on:
+  schedule:
+    # ⏱️ CONFIGURAZIONE ORARI (Fuso orario italiano estivo UTC+2)
+    - cron: '0 6 * * *'   # 🟢 Accensione: ore 06:00 UTC (08:00 Italiane)
+    - cron: '0 10 * * *'  # 🔴 Spegnimento: ore 10:00 UTC (12:00 Italiane)
+
+jobs:
+  gestione_bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Controlla orario ed esegui azione su Render
+        run: |
+          # Recupera l'ora attuale UTC
+          ORA_ATTUALE=$(date -u +%H)
+          echo "Ora attuale UTC riscontrata: $ORA_ATTUALE"
+          
+          # Se sono le 10:00 UTC (le 12:00 in Italia), spegne il bot
+          if [ "$ORA_ATTUALE" = "10" ]; then
+            echo "Avvio procedura di SOSPENSIONE..."
+            curl --request POST \
+              --url https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/suspend \
+              --header 'accept: application/json' \
+              --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}'
+              
+          # Se sono le 06:00 UTC (le 08:00 in Italia), accende il bot
+          elif [ "$ORA_ATTUALE" = "06" ]; then
+            echo "Avvio procedura di RIATTIVAZIONE..."
+            curl --request POST \
+              --url https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/resume \
+              --header 'accept: application/json' \
+              --header 'authorization: Bearer ${{ secrets.RENDER_API_KEY }}'
+          fi
