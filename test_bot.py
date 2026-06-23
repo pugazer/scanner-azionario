@@ -180,16 +180,16 @@ def esegui_scansione_incubatore():
             time.sleep(1.0)
         except: continue
 
-    def loop_scansione_background():
-        global giorno_ultimo_controllo
-        while True:
-            esegui_scansione_test()
-            if giorno_ultimo_controllo != datetime.now().date():
-                esegui_scansione_incubatore()
-                giorno_ultimo_controllo = datetime.now().date()
-            time.sleep(1800)
+def loop_scansione_background():
+    global giorno_ultimo_controllo
+    while True:
+        esegui_scansione_test()
+        if giorno_ultimo_controllo != datetime.now().date():
+            esegui_scansione_incubatore()
+            giorno_ultimo_controllo = datetime.now().date()
+        time.sleep(1800)
 
-    threading.Thread(target=loop_scansione_background, daemon=True).start()
+threading.Thread(target=loop_scansione_background, daemon=True).start()
 
-    if __name__ == "__main__":
-        app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+if __name__ == "__main__":
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
