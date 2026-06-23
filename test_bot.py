@@ -18,10 +18,10 @@ app = Flask(__name__)
 def home():
     return f"🧪 BOT AUTOMATICO OPERATIVO. Ultima scansione: {getattr(app, 'last_scan', 'Mai')}"
 
-# --- WEBHOOKS ---
-WEBHOOK_4H_TEST      = "https://discord.com/api/webhooks/1516694458484261035/e-f8YSlg8G6PkKFGGOUswB_HZcQtW7HIdnRBeMoE4QfGQ-yFIvT2ihj8AqFvnadDiml-"
-WEBHOOK_DAILY_TEST   = "https://discord.com/api/webhooks/1516694554433159228/11rWbzbOFlBDRU2PYnS2O4nuE498RYK4Bpb7v7AD1CdTrqNVufsVR_TzeI9-7b1Rd4yr"
-WEBHOOK_WEEKLY_TEST  = "https://discord.com/api/webhooks/1516694640474980485/81JQjiXRSOEKSmUYqsbRvX5S6_y9MTcLbesRk6DuBkM7ZmCQMAd35TL1tnhrK_o-uCWv"
+# --- WEBHOOKS (PROTETTI DA VARIABILI D'AMBIENTE) ---
+WEBHOOK_4H_TEST      = os.environ.get("WEBHOOK_4H_TEST")
+WEBHOOK_DAILY_TEST   = os.environ.get("WEBHOOK_DAILY_TEST")
+WEBHOOK_WEEKLY_TEST  = os.environ.get("WEBHOOK_WEEKLY_TEST")
 
 # --- TIMEFRAMES ---
 timeframes = {
@@ -76,7 +76,7 @@ def scrivi_file_su_github(path_file, linee, messaggio_commit):
     if r.status_code == 200: sha = r.json().get("sha", "")
         
     testo_base64 = base64.b64encode(("\n".join(linee) + "\n").encode('utf-8')).decode('utf-8')
-    payload = {"message": mensaje_commit, "content": testo_base64}
+    payload = {"message": messaggio_commit, "content": testo_base64}
     if sha: payload["sha"] = sha
         
     r_put = requests.put(url, headers=headers, json=payload)
@@ -157,7 +157,6 @@ def esegui_scansione_test():
                                 requests.post(tf_config["webhook"], json=msg)
                                 gia_inviati[chiave] = df.index[-1]
                     
-                    # Pausa di 1 secondo tra le richieste per evitare i ban IP su liste grandi
                     time.sleep(1.0)
                 except Exception as e:
                     print(f"⚠️ Errore su {ticker} ({tf_name}): {e}", flush=True)
@@ -181,16 +180,16 @@ def esegui_scansione_incubatore():
             time.sleep(1.0)
         except: continue
 
-def loop_scansione_background():
-    global giorno_ultimo_controllo
-    while True:
-        esegui_scansione_test()
-        if giorno_ultimo_controllo != datetime.now().date():
-            esegui_scansione_incubatore()
-            giorno_ultimo_controllo = datetime.now().date()
-        time.sleep(1800)
+    def loop_scansione_background():
+        global giorno_ultimo_controllo
+        while True:
+            esegui_scansione_test()
+            if giorno_ultimo_controllo != datetime.now().date():
+                esegui_scansione_incubatore()
+                giorno_ultimo_controllo = datetime.now().date()
+            time.sleep(1800)
 
-threading.Thread(target=loop_scansione_background, daemon=True).start()
+    threading.Thread(target=loop_scansione_background, daemon=True).start()
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+    if __name__ == "__main__":
+        app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
