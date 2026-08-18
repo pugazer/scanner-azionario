@@ -42,7 +42,6 @@ IPG
 ISP
 JNPR
 K
-KMX
 KO
 KR
 KSS
