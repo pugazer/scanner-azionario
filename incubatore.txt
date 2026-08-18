@@ -42,7 +42,6 @@ IPG
 ISP
 JNPR
 K
-KO
 KR
 KSS
 LDO
