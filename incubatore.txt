@@ -64,6 +64,7 @@ IWM
 J
 JBHT
 JCI
+JD
 JNPR
 K
 LDO
